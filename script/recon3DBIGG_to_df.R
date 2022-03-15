@@ -79,6 +79,7 @@ for(i in 1:length(reaction_list))
   }
 }
 reaction_to_genes <- as.data.frame(do.call(rbind,reaction_to_genes))
+reaction_to_genes[grepl("[a-z]",reaction_to_genes$V2),"V2"] <- paste("orphanReac",reaction_to_genes[grepl("[a-z]",reaction_to_genes$V2),"V2"],sep = "")
 
 reaction_to_genes_original <- reaction_to_genes
 
@@ -244,6 +245,35 @@ for(i in 1:length(S[1,]))
     gene_df$V1 <- c(reactants,rep(gene,number_of_interations-length(reactants))) #reactants followed by the enzyme (the enzyme is repeated asmany time as they are products)
     gene_df$V2 <- c(rep(gene,number_of_interations-length(products)),products) #enzyme(repeated asmany time as they are reactants) followed by products
     
+    if(length(reactants) >= 2 & length(products) >= 2 & length(products) == length(reactants))
+    {
+      if(sum(gsub("_[a-z]$","",reactants) == gsub("_[a-z]$","",products)) == length(reactants))
+      {
+        prefix <- str_extract(gene,"Gene[0-9]+__")
+        prefix <- gsub("__","",prefix)
+        gene <- gsub("Gene[0-9]+__","",gene)
+        for(k in 1:length(reactants))
+        {
+          new_prefix <- paste("0000",k, sep = "")
+          new_prefix <- paste(new_prefix,"__",sep = "")
+          new_prefix <- paste(prefix,new_prefix,sep = "")
+          
+          # if(grepl("_e$",gene_df[k,1]) |  grepl("_e$",gene_df[k+length(reactants),2])) #Remove external import and exports
+          # {
+          #   gene_df[k,] <- c(NA,NA)
+          #   gene_df[k+length(reactants),] <- c(NA,NA)
+          # } else
+          # {
+          #   gene_df[k,2] <- paste(new_prefix, gene, sep = "")
+          #   gene_df[k+length(reactants),1] <- paste(new_prefix, gene, sep = "")
+          # }
+          
+          gene_df[k,2] <- paste(new_prefix, gene, sep = "")
+          gene_df[k+length(reactants),1] <- paste(new_prefix, gene, sep = "")
+        }
+      }
+    }
+    
     if(reversible[i]) #if reaction is reversible, we do the same but inverse reactant and products
     {
       gene_df_reverse <- as.data.frame(matrix(NA,number_of_interations,2))
@@ -251,7 +281,16 @@ for(i in 1:length(S[1,]))
       gene_df_reverse$V2 <- c(reactants,rep(paste(gene,"_reverse",sep = ""),number_of_interations-length(reactants)))
       gene_df <- as.data.frame(rbind(gene_df,gene_df_reverse))
     }
-    reaction_df[[j]] <- gene_df 
+    
+    # if(sum(grepl("_e$",as.character(c(gene_df[,1],gene_df[,2]))) > 0)) #remove external imports exports
+    # {
+    #   reaction_df[[j]] <- as.data.frame(matrix(NA,1,2))
+    # } else
+    # {
+    #   reaction_df[[j]] <- gene_df 
+    # }
+    
+    reaction_df[[j]] <- gene_df
     j <- j+1
   }
   #the individual enzyme dataframes of this reaction are combined into one reaction dataframe
@@ -260,11 +299,15 @@ for(i in 1:length(S[1,]))
   #the reaction dataframe is added to the list of all reaction reaction dataframes
   reactions_df[[i]] <- reaction_df
 }
+
 #the individual reaction dataframesare combined into one
 reactions_df <- as.data.frame(do.call(rbind,reactions_df))
 
 reactions_df <- reactions_df[reactions_df$V1 != "Metab__" & reactions_df$V2 != "Metab__",]
-reactions_df <- reactions_df[!(grepl("Metab__.*_e$",reactions_df$V1)) & !(grepl("Metab__.*_e$",reactions_df$V2)),] # Remove external metabolism
+
+reactions_df <- reactions_df[complete.cases(reactions_df),]
+
+# reactions_df <- reactions_df[!(grepl("Metab__.*_e$",reactions_df$V1)) & !(grepl("Metab__.*_e$",reactions_df$V2)),] # Remove external metabolism
 ###############################
 ###############################
 ###############################
@@ -295,5 +338,9 @@ reactions_df_no_cofac <- reactions_df[gsub("_[a-z]$","",reactions_df$V1) %in% na
                                         gsub("_[a-z]$","",reactions_df$V2) %in% names(metabs_sorted),]
 
 names(reactions_df_no_cofac) <- c("source","target")
+
+reactions_df_no_cofac$source <- gsub("__NA$","__orphanReacNA",reactions_df_no_cofac$source)
+reactions_df_no_cofac$target <- gsub("__NA$","__orphanReacNA",reactions_df_no_cofac$target)
+
 
 write_csv(reactions_df_no_cofac, file = "result/recon3D_bigg_no_cofactor.csv")
