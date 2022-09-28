@@ -41,32 +41,43 @@ for(i in 1:length(reaction_list))
     genes <- unique(gsub(" and ","_",gsub("[()]","",gsub("_AT[0-9]+","",strsplit(reaction_list[[i]][[1]], split = " or ")[[1]]))))
     df <- as.data.frame(matrix(NA,length(genes), 2))
     df[,1] <- i
-    if(as.character(genes) %in% names(gene_mapping_vec))
+    if(sum(as.character(genes) %in% names(gene_mapping_vec)) > 0)
     {
-      genes <- gene_mapping_vec[as.character(genes)]
+      for(k in 1:length(as.character(genes)))
+      {
+        if(as.character(genes[k]) %in% names(gene_mapping_vec))
+        {
+          genes[k] <- gene_mapping_vec[as.character(genes[k])]
+        }
+      }
+      
     } else
     {
-      if(grepl("_",genes))
+      for(k in 1:length(genes))
       {
-        if(grepl("4967",genes))
+        if(grepl("_",genes[k]))
         {
-          print(genes)
-          lol <- T
-        }
-        genes <- strsplit(genes, split = "_")[[1]]
-        for(j in 1:length(genes))
-        {
-          if(lol) print(genes[j])
-          if(as.character(genes[j]) %in% names(gene_mapping_vec))
+          if(grepl("4967",genes[k]))
           {
-            genes[j] <- gene_mapping_vec[as.character(genes[j])]
+            print(genes[k])
+            lol <- T
           }
-          if(lol) print(genes[j])
+          genes_splitted <- strsplit(genes[k], split = "_")[[1]]
+          for(j in 1:length(genes_splitted))
+          {
+            if(lol) print(genes_splitted[j])
+            if(as.character(genes_splitted[j]) %in% names(gene_mapping_vec))
+            {
+              genes_splitted[j] <- gene_mapping_vec[as.character(genes_splitted[j])]
+            }
+            if(lol) print(genes_splitted[j])
+          }
+          genes[k] <- paste0(genes_splitted, collapse = "_")
+          if(lol) print(genes)
+          if(lol) print(i)
         }
-        genes <- paste0(genes, collapse = "_")
-        if(lol) print(genes)
-        if(lol) print(i)
       }
+      
     }
     df[,2] <- genes
     reaction_to_genes[[i]] <- df
@@ -80,6 +91,7 @@ for(i in 1:length(reaction_list))
 }
 reaction_to_genes <- as.data.frame(do.call(rbind,reaction_to_genes))
 reaction_to_genes[grepl("[a-z]",reaction_to_genes$V2),"V2"] <- paste("orphanReac",reaction_to_genes[grepl("[a-z]",reaction_to_genes$V2),"V2"],sep = "")
+reaction_to_genes <- unique(reaction_to_genes)
 
 reaction_to_genes_original <- reaction_to_genes
 
@@ -332,7 +344,11 @@ for(metab in names(metabs))
 
 metabs_sorted <- sort(metabs, decreasing = T)
 
-metabs_sorted <- metabs_sorted[metabs_sorted < 300] #smallest number of connections before we find important metabolties
+cofactor <- metabs_sorted[metabs_sorted >= 400]
+cofactor
+
+metabs_sorted <- metabs_sorted[metabs_sorted < 400] #smallest number of connections before we find important metabolties
+#glycine and glutamate both have more than 300 connections lol
 
 reactions_df_no_cofac <- reactions_df[gsub("_[a-z]$","",reactions_df$V1) %in% names(metabs_sorted) | 
                                         gsub("_[a-z]$","",reactions_df$V2) %in% names(metabs_sorted),]
