@@ -3,9 +3,10 @@ library(stringr)
 library(readr)
 library(ocean)
 
+#from BIGG db (http://bigg.ucsd.edu/models/Recon3D)
 recon3D_BIGG <- readMat("Recon3D.mat")
 
-
+#From VHM (https://www.vmh.life/files/reconstructions/Recon/3D.01/)
 recon3D_paper <- readMat("Recon3DModel_301.mat")
 
 recon3D_BIGG <- recon3D_BIGG$Recon3D
